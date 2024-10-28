@@ -1,0 +1,49 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main  
+
+jobs:
+  deploy_aws:
+    name: Deploy  AWS EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Configuracao SSH
+        env:
+          SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > ~/.ssh/aws_key
+          chmod 600 ~/.ssh/aws_key
+
+      - name: Deploy  AWS EC2
+        env:
+          EC2_USER: ubuntu
+          EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/aws_key $EC2_USER@$EC2_HOST << 'EOF'
+            cd "C:\Users\nataliacarvalho-ieg\Downloads\18a-flask-api_methods-develop\flask-api_methods-develop"
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            tmux new-session -d -s flask_app './start.sh'
+          EOF
+
+  deploy_render:
+    name: Deploy Render
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to Render
+        uses: render-examples/deploy-action@v1
+        with:
+          serviceId: ${{ secrets.RENDER_SERVICE_ID }}
+          apiKey: ${{ secrets.RENDER_API_KEY }}
